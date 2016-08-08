@@ -436,12 +436,13 @@ export default class {
                 buffer.toTypedArray(messageKey)
             )
 
+            // return defensive copies
             const message = {
-                ephemeralKey: typedArray.toBase64(this._ratchetKeys.send),
+                ephemeralKey: buffer.toTypedArray(this._ratchetKeys.send),
                 counter: this._counters.send,
                 previousCounter: this._prevCounter,
-                ciphertext: typedArray.toBase64(ciphertext),
-                nonce: typedArray.toBase64(nonce)
+                ciphertext: buffer.toTypedArray(ciphertext),
+                nonce: buffer.toTypedArray(nonce)
             }
 
             /**
@@ -466,11 +467,11 @@ export default class {
     * Decrypt a message object.
     *
     * @param {Object} message - The message object to be decrypted.
-    * @param {String} message.ephemeralKey - Base64 ephemeral key
+    * @param {Buffer|Uint8Array} message.ephemeralKey - ephemeral key
     * @param {Number} message.counter - Number of messages sent on this chain
     * @param {Number} message.previousCounter - Number of messages on prev chain
-    * @param {String} message.ciphertext - Base64 ciphertext to be decrypted
-    * @param {String} message.nonce - Base64 nonce for ciphertext
+    * @param {Buffer|Uint8Array} message.ciphertext - ciphertext to be decrypted
+    * @param {Buffer|Uint8Array} message.nonce - nonce for ciphertext
     * @return {Promise}
     */
     decrypt (message) {
@@ -482,8 +483,8 @@ export default class {
                 message.hasOwnProperty('previousCounter') &&
                 message.hasOwnProperty('ciphertext') &&
                 message.hasOwnProperty('nonce') &&
-                message.ephemeralKey.length === 44 &&
-                message.nonce.length === 32 &&
+                message.ephemeralKey.length === 32 &&
+                message.nonce.length === 24 &&
                 message.ciphertext.length > 0 &&
                 !isNaN(message.counter) &&
                 !isNaN(message.previousCounter)
@@ -509,8 +510,8 @@ export default class {
 
                 // Attempt to decrypt the message.
                 decryptedMessage = nacl.secretbox.open(
-                    nacl.util.decodeBase64(message.ciphertext),
-                    nacl.util.decodeBase64(message.nonce),
+                    message.ciphertext,
+                    message.nonce,
                     buffer.toTypedArray(thisKey)
                 )
 
@@ -547,8 +548,7 @@ export default class {
             */
             if (
                 (this._ratchetKeys.recv === null) ||
-                (nacl.util.encodeBase64(this._ratchetKeys.recv) !==
-                 message.ephemeralKey)
+                (!buffer.equals(this._ratchetKeys.recv, message.ephemeralKey))
             ) {
                 if (this._ratchet === true) {
                     /**
@@ -563,7 +563,7 @@ export default class {
                 * ratchet receive key.
                 */
                 let pPrevCounter = message.previousCounter
-                let pRatchetRecv = nacl.util.decodeBase64(message.ephemeralKey)
+                let pRatchetRecv = message.ephemeralKey
 
                 /**
                 * The spec says to stage all of the keys for the previous
@@ -621,8 +621,8 @@ export default class {
 
                 // Attempt to decrypt the message.
                 decryptedMessage = nacl.secretbox.open(
-                    nacl.util.decodeBase64(message.ciphertext),
-                    nacl.util.decodeBase64(message.nonce),
+                    message.ciphertext,
+                    message.nonce,
                     buffer.toTypedArray(messageKey)
                 )
 
@@ -672,8 +672,8 @@ export default class {
                 pChainKey = stagedKeys.chainKey
 
                 decryptedMessage = nacl.secretbox.open(
-                    nacl.util.decodeBase64(message.ciphertext),
-                    nacl.util.decodeBase64(message.nonce),
+                    message.ciphertext,
+                    message.nonce,
                     buffer.toTypedArray(messageKey)
                 )
 
